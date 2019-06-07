@@ -105,3 +105,8 @@ venv.bak/
 
 # graph files
 *.html
+
+# other files
+*.pdf
+reference/
+network_graphs/
