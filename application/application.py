@@ -3,11 +3,17 @@ import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
 import networkx as nx
-import os
+# import os
 
 import plotly.graph_objs as go
 
 
+
+# Step 1. Launch the application
+app = dash.Dash()
+application = app.server
+
+# ---- DEF FUNTCTIONS
 def create_edges(G):
     edge_trace = go.Scatter(
         x=[],
@@ -95,14 +101,13 @@ def create_fig_data(G):
 
     return data, layout
 
-# Step 1. Launch the application
-app = dash.Dash()
 
 # Step 2. Import the dataset
-saved_graph_folder = 'network_graphs'
-saved_graph_filepath_head = os.path.join(os.getcwd(), saved_graph_folder)
-read_file_name = 'G_20190607_182226'
-G = nx.read_gpickle(os.path.join(saved_graph_filepath_head, read_file_name + '.gpickle'))
+# saved_graph_folder = 'network_graphs'
+# saved_graph_filepath_head = os.path.join(os.getcwd(), saved_graph_folder)
+# read_file_name = 'G_20190607_182226'
+# G = nx.read_gpickle(os.path.join(saved_graph_filepath_head, read_file_name + '.gpickle'))
+G = nx.Graph()
 
 # G = nx.read_gpickle('C:/Users/Grace/Dropbox/cocktail_party/test_graph.gpickle')
 
@@ -140,6 +145,8 @@ def update_figure(n_clicks, value, value_friend, fig_updated):
         fig_updated = go.Figure(data=data_temp, layout=layout_temp)
     return fig_updated
 
+
 # Step 6. Add the server clause
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    # app.run_server(debug=True)
+    application.run(debug=True, port=8080)  # Beanstalk expects it to be running on 8080.
