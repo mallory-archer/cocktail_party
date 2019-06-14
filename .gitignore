@@ -108,6 +108,7 @@ venv.bak/
 
 # other files
 *.pdf
+*.zip
 reference/
 network_graphs/
 © 2019 GitHub, Inc.
