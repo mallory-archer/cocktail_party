@@ -123,7 +123,7 @@ def parse_G(G):
     edge_trace = create_edges(G)
 
     # ----- Create nodes ----
-    node_trace = create_nodes(G, betweeness_centrality, magma_cmap)
+    node_trace = create_nodes(G, betweeness_centrality, node_color_map=magma_cmap)     #'YlGnBu'
 
     return edge_trace, node_trace
 
