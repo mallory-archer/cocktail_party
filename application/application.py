@@ -173,53 +173,55 @@ relationship_dict = {'school': {'label': 'school', 'color': '#ee5c5d'},
 dropdown_labels = [{'value': key, 'label': value['label']} for key, value in relationship_dict.items()]
 magma_cmap_temp = matplotlib.cm.get_cmap('magma')
 magma_cmap = matplotlib_to_plotly(magma_cmap_temp, 255, reverse_colorscale=False, min_colormap_val=0.3, max_colormap_val=1)
+G = nx.Graph()
 
 # Step 1. Launch the application
 app = dash.Dash(__name__, meta_tags=[
-        {"name": "viewport", "content": "width=device-width, initial-scale=1"}
+        {"name": "viewport", "content": "width=device-width, initial-scale=1, user-scalable=0"}
     ])
 
-# Step 2. Import the dataset
-# saved_graph_folder = 'network_graphs'
-# saved_graph_filepath_head = os.path.join(os.getcwd(), saved_graph_folder)
-# read_file_name = 'G_20190607_182226'
-# G = nx.read_gpickle(os.path.join(saved_graph_filepath_head, read_file_name + '.gpickle'))
-G = nx.Graph()
-
-# G = nx.read_gpickle('C:/Users/Grace/Dropbox/cocktail_party/test_graph.gpickle')
 
 # Step 3. Create a plotly figure
-data, layout = create_fig_data(G)
-fig = go.Figure(data=data, layout=layout)
+def serve_layout():
+    try:
+        fig
+    except NameError:
+        data_temp, layout_temp = create_fig_data(G)
+        fig = go.Figure(data=data_temp, layout=layout_temp)
+
+    layout_temp = html.Div([
+        html.Div(children=html.Div([html.H1("Have we met?")])),
+        dcc.Graph(id='plot', figure=fig),
+        html.Div(dcc.Input(id='input-box', type='text', placeholder='YOUR [First_name Last_name]')),
+        html.Div(dcc.Input(id='input-box-friend', type='text', placeholder="FRIEND [First_name Last_name]")),
+        html.Div(
+            dcc.Dropdown(
+                id='relationship',
+                options=dropdown_labels,
+                value=None,
+                className='dropdown'
+            )),
+        html.Button('Submit', id='button'),
+        html.Div(children=html.Label(["Python code: ", html.A('https://github.com/mallory-archer/cocktail_party/',
+                                                              href='https://github.com/mallory-archer/cocktail_party/',
+                                                              style={'color': '#ad1457'})],
+                                     style={'color': '#E9DDE1'}))
+    ])
+    return layout_temp
+# --- ADD THESE BACK INTO ELEMENTS TO MAKE SAVE BUTTON (AND ENABLE CALLBACK BELOW) ---
+# html.Button(type='submit', id='save-button', children="Save Data"),
+# html.Ul(id="file-list"),
+
 
 # Step 4. Create a Dash layout
-app.layout = html.Div([
-    # a header and a paragraph
-    html.Div(children=html.Div([html.H1("Have we met?")])),
-    # adding a plot
-    dcc.Graph(id='plot', figure=fig),
-    html.Div(dcc.Input(id='input-box', type='text', placeholder='Enter your First_name Last_name')),
-    html.Div(dcc.Input(id='input-box-friend', type='text', placeholder="Enter friend's First_name Last_name")),
-    html.Div(
-        dcc.Dropdown(
-            id='relationship',
-            options=dropdown_labels,
-            value=None,
-            className='dropdown'
-        )),
-    html.Button('Submit', id='button'),
-    html.Div(children=html.Label(["Python code: ", html.A('https://github.com/mallory-archer/cocktail_party/',
-                                                          href='https://github.com/mallory-archer/cocktail_party/',
-                                                          style={'color': '#ad1457'})],
-                                 style={'color': '#E9DDE1'}))
-])
+app.layout = serve_layout
 
 
 # Step 5. Add callback functions
 @app.callback(Output('plot', 'figure'),
               [Input('button', 'n_clicks')],
               [State('input-box', 'value'), State('input-box-friend', 'value'), State('relationship', 'value'), State('plot', 'figure')]
-              )    # Output('output-container-button', 'children')  [Input('button', 'n_clicks'), ,
+              )
 def update_figure(n_clicks, value, value_friend, value_relationship, fig_updated):
     if value and value_friend:
         G.add_nodes_from([value.title()])
@@ -228,10 +230,15 @@ def update_figure(n_clicks, value, value_friend, value_relationship, fig_updated
         fig_updated = go.Figure(data=data_temp, layout=layout_temp)
     return fig_updated
 
+# ---- SAVE BUTTON CALL BACK -----
+# @app.callback(Output("file-list", "children"), [Input('save-button', 'n_clicks')])
+# def save_G(n_clicks):
+#     # nx.write_gpickle(G, save_path)
+#     return None
+
 
 # Step 6. Add the server clause
 application = app.server
 
 if __name__ == '__main__':
-    # app.run_server(debug=True)
     application.run(debug=True, port=8080)  # Beanstalk expects it to be running on 8080.
