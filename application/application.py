@@ -7,6 +7,9 @@ import matplotlib
 from matplotlib import cm
 import plotly.graph_objs as go
 import numpy as np
+import boto3
+import json
+import os
 
 
 # ---- DEF FUNTCTIONS
@@ -160,7 +163,23 @@ def create_fig_data(G):
     return data, layout
 
 
+def save_graph_object_to_s3(G, s3_resource, bucket_name, file_loc):
+    G_dict = nx.node_link_data(G)
+    G_json = json.dumps(G_dict)
+    server_message = s3_resource.Object(bucket_name, file_loc).put(Body=G_json)
+    return server_message
+
+
+def import_saved_graph_object(s3_client, bucket_name, file_loc):
+    file_object = s3_client.get_object(Bucket=bucket_name, Key=file_loc)
+    G_string = file_object['Body'].read().decode('utf-8')
+    G_data = json.loads(G_string)
+    G_from_file = nx.node_link_graph(G_data)
+    return G_from_file
+
+
 # ---- DEF PARAMS
+# Color mapping
 relationship_dict = {'school': {'label': 'school', 'color': '#ee5c5d'},
                      'work': {'label': 'work', 'color': '#ee5c5d'},
                      'roommate': {'label': 'roommate', 'color': '#ee5c5d'},
@@ -173,8 +192,23 @@ relationship_dict = {'school': {'label': 'school', 'color': '#ee5c5d'},
 dropdown_labels = [{'value': key, 'label': value['label']} for key, value in relationship_dict.items()]
 magma_cmap_temp = matplotlib.cm.get_cmap('magma')
 magma_cmap = matplotlib_to_plotly(magma_cmap_temp, 255, reverse_colorscale=False, min_colormap_val=0.3, max_colormap_val=1)
+
+# Initialize graph
 G = nx.Graph()
 
+# Specify S3 read/write params
+bucket_name = os.environ.get("S3_BUCKET")
+aws_access_key_id = os.environ.get('AWS_ACCESS_KEY_ID')
+aws_secret_access_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
+s3 = boto3.client('s3', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
+s3_resource = boto3.resource('s3')
+
+filepath = 'output_graphs'
+filename = 'saved_graph.txt'
+file_loc = os.path.join(filepath, filename)
+file_loc = filepath + '/' + filename
+
+# ----- START APPLICATION ------
 # Step 1. Launch the application
 app = dash.Dash(__name__, meta_tags=[
         {"name": "viewport", "content": "width=device-width, initial-scale=1, user-scalable=0"}
@@ -202,15 +236,14 @@ def serve_layout():
                 className='dropdown'
             )),
         html.Button('Submit', id='button'),
+        html.Button(type='submit', id='save-button', children="Save Data"),
+        html.Ul(id="file-list"),
         html.Div(children=html.Label(["Python code: ", html.A('https://github.com/mallory-archer/cocktail_party/',
                                                               href='https://github.com/mallory-archer/cocktail_party/',
                                                               style={'color': '#ad1457'})],
                                      style={'color': '#E9DDE1'}))
     ])
     return layout_temp
-# --- ADD THESE BACK INTO ELEMENTS TO MAKE SAVE BUTTON (AND ENABLE CALLBACK BELOW) ---
-# html.Button(type='submit', id='save-button', children="Save Data"),
-# html.Ul(id="file-list"),
 
 
 # Step 4. Create a Dash layout
@@ -219,22 +252,21 @@ app.layout = serve_layout
 
 # Step 5. Add callback functions
 @app.callback(Output('plot', 'figure'),
-              [Input('button', 'n_clicks')],
+              [Input('button', 'n_clicks'), Input('save-button', 'n_clicks')],
               [State('input-box', 'value'), State('input-box-friend', 'value'), State('relationship', 'value'), State('plot', 'figure')]
               )
-def update_figure(n_clicks, value, value_friend, value_relationship, fig_updated):
+def update_figure(n_clicks_submit, n_clicks_save, value, value_friend, value_relationship, fig_updated):
     if value and value_friend:
-        G.add_nodes_from([value.title()])
-        G.add_edge(value.title(), value_friend.title(), label=value_relationship)
+        G.add_nodes_from([value.strip().title()])
+        G.add_edge(value.strip().title(), value_friend.strip().title(), label=value_relationship)
         data_temp, layout_temp = create_fig_data(G)
         fig_updated = go.Figure(data=data_temp, layout=layout_temp)
+    if n_clicks_save is not None:
+        try:
+            save_graph_object_to_s3(G, s3_resource, bucket_name, file_loc)
+        except:
+            None
     return fig_updated
-
-# ---- SAVE BUTTON CALL BACK -----
-# @app.callback(Output("file-list", "children"), [Input('save-button', 'n_clicks')])
-# def save_G(n_clicks):
-#     # nx.write_gpickle(G, save_path)
-#     return None
 
 
 # Step 6. Add the server clause
