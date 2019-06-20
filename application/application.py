@@ -178,8 +178,8 @@ def import_saved_graph_object(s3_client, bucket_name, file_loc):
     return G_from_file
 
 
-# ---- DEF PARAMS
-# Color mapping
+# ----- INITIALIZE -----
+# --- Define params
 relationship_dict = {'school': {'label': 'school', 'color': '#ee5c5d'},
                      'work': {'label': 'work', 'color': '#ee5c5d'},
                      'roommate': {'label': 'roommate', 'color': '#ee5c5d'},
@@ -189,24 +189,30 @@ relationship_dict = {'school': {'label': 'school', 'color': '#ee5c5d'},
                      'childhood': {'label': 'childhood', 'color': '#5c595a'},
                      'other': {'label': 'other', 'color': '#ee5c5d'}
                      }
+filepath = 'output_graphs'      # folder(s) in S3 bucket specifying where to save graph object jsons (as a result of clicking "save" on the website
+filename = 'saved_graph.txt'    # specify name of graph object json
+select_colormap = 'magma'       # base colormap to import from matplotlib
+bucket_name = os.environ.get('S3_BUCKET')       # Environmental variable configured through Elastic Beanstalk web interface. Name can be specified as free text in console.
+aws_access_key_id = os.environ.get('AWS_ACCESS_KEY_ID') # Environmental variable configured through Elastic Beanstalk web interface. Name can be specified as free text in console.
+aws_secret_access_key = os.environ.get('AWS_SECRET_ACCESS_KEY') # Environmental variable configured through Elastic Beanstalk web interface. Name can be specified as free text in console.
+select_port = 8080      # Beanstalk expects it to be running on 8080
+
+# --- Calculations
 dropdown_labels = [{'value': key, 'label': value['label']} for key, value in relationship_dict.items()]
-magma_cmap_temp = matplotlib.cm.get_cmap('magma')
+file_loc = os.path.join(filepath, filename)
+file_loc = filepath + '/' + filename
+
+# Color mapping
+magma_cmap_temp = matplotlib.cm.get_cmap(select_colormap)
 magma_cmap = matplotlib_to_plotly(magma_cmap_temp, 255, reverse_colorscale=False, min_colormap_val=0.3, max_colormap_val=1)
 
 # Initialize graph
 G = nx.Graph()
 
 # Specify S3 read/write params
-bucket_name = os.environ.get("S3_BUCKET")
-aws_access_key_id = os.environ.get('AWS_ACCESS_KEY_ID')
-aws_secret_access_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
 s3 = boto3.client('s3', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
 s3_resource = boto3.resource('s3')
 
-filepath = 'output_graphs'
-filename = 'saved_graph.txt'
-file_loc = os.path.join(filepath, filename)
-file_loc = filepath + '/' + filename
 
 # ----- START APPLICATION ------
 # Step 1. Launch the application
@@ -273,4 +279,4 @@ def update_figure(n_clicks_submit, n_clicks_save, value, value_friend, value_rel
 application = app.server
 
 if __name__ == '__main__':
-    application.run(debug=True, port=8080)  # Beanstalk expects it to be running on 8080.
+    application.run(debug=True, port=select_port)  # Beanstalk expects it to be running on 8080.

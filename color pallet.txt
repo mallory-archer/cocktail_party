@@ -1,8 +1,0 @@
-HEX
-light grey #E9DDE1
-grey #5c595a
-yellow #fec88c
-salmon #ee5c5d
-magenta #ad1457
-violet #8c2980
-indigo #4a148c
